@@ -20,11 +20,11 @@
 
 1. 更新 `server/pom.xml` 的项目版本，以及 `compose.yaml`、`.env.example`、`scripts/init-server.sh` 和 `scripts/init-server.ps1` 的默认 `IMAGE_TAG`。文档示例同步更新。
 2. 在客户端或镜像同步协议发生变化时，确认服务端兼容性；服务端标签不要求与客户端标签相同。
-3. 提交并推送 `main`，确认测试通过，再推送对应的标签。例如下一次修订版：
+3. 提交并推送 `main`，确认测试通过，再推送对应的标签。例如 1.0.1 之后的修订版：
 
 ```sh
-git tag v1.0.1
-git push origin v1.0.1
+git tag v1.0.2
+git push origin v1.0.2
 ```
 
 CI 检查标签与项目版本及部署默认版本一致。正式发布后保留原标签和镜像，修复使用新版本号。`latest` 跟随最近成功的正式标签；部署推荐固定 `IMAGE_TAG`，`main` 用于开发验收。不要在其他分支手动触发发布工作流。

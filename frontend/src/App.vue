@@ -41,6 +41,7 @@ import {
 import { api, ApiError, jsonBody, session } from "./api";
 import type {
   Dashboard,
+  DuplicateMachineGroup,
   Machine,
   NetworkInterface,
   Provider,
@@ -76,6 +77,7 @@ const loginError = ref(""),
   loading = ref(false),
   submitting = ref(false);
 const machines = ref<Machine[]>([]),
+  duplicateGroups = ref<DuplicateMachineGroup[]>([]),
   providers = ref<Provider[]>([]),
   rules = ref<Rule[]>([]),
   logs = ref<SyncLog[]>([]);
@@ -91,7 +93,16 @@ const now = ref(Date.now()),
   query = ref(""),
   statusFilter = ref("all");
 const selectedMachine = ref<Machine | null>(null);
-const modal = ref<"provider" | "rule" | "onboarding" | "confirm" | null>(null);
+const modal = ref<"provider" | "rule" | "onboarding" | "confirm" | "merge" | null>(null);
+const mergeMembers = ref<Machine[]>([]),
+  mergeTargetId = ref(""),
+  mergeError = ref("");
+const mergeSourceIds = computed(() =>
+  mergeMembers.value.filter((item) => item.deviceId !== mergeTargetId.value).map((item) => item.deviceId),
+);
+const validMergeTarget = computed(() =>
+  mergeMembers.value.some((item) => item.deviceId === mergeTargetId.value),
+);
 const installerOs = ref<"windows" | "unix">("windows");
 const releaseState = ref<"loading" | "ready" | "pending" | "error">("pending");
 const mirroredRelease = ref<{
@@ -105,6 +116,7 @@ const syncing = ref<number | null>(null);
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
 let pollTimer: ReturnType<typeof setInterval> | undefined;
 let clockTimer: ReturnType<typeof setInterval> | undefined;
+let refreshTask: Promise<void> | undefined;
 const providerNames: Record<ProviderType, string> = {
   ALIYUN: "阿里云 DNS",
   TENCENT: "腾讯云 DNSPod",
@@ -215,20 +227,26 @@ function readHash() {
 }
 
 // 统一刷新真实接口；页面只在可见时定时拉取，不生成演示机器或虚构同步结果。
-async function refresh() {
+function refresh(): Promise<void> {
+  if (!refreshTask) refreshTask = refreshState().finally(() => { refreshTask = undefined; });
+  return refreshTask;
+}
+async function refreshState() {
   if (loading.value || !authenticated.value) return;
   loading.value = true;
   try {
-    const [dashboard, machineList, providerList, ruleList, logList] =
+    const [dashboard, machineList, providerList, ruleList, logList, duplicates] =
       await Promise.all([
         api<Dashboard>("/dashboard"),
         api<Machine[]>("/machines"),
         api<Provider[]>("/providers"),
         api<Rule[]>("/ddns/rules"),
         api<SyncLog[]>("/ddns/logs?limit=100"),
+        api<DuplicateMachineGroup[]>("/machines/duplicates"),
       ]);
     summary.value = dashboard;
     machines.value = machineList;
+    duplicateGroups.value = duplicates;
     providers.value = providerList;
     rules.value = ruleList;
     logs.value = logList;
@@ -286,6 +304,9 @@ function closeModal() {
   if (submitting.value) return;
   modal.value = null;
   providerForm.accessKeySecret = "";
+  mergeMembers.value = [];
+  mergeTargetId.value = "";
+  mergeError.value = "";
   nextTick(() => modalOrigin.value?.focus());
 }
 function trapFocus(event: KeyboardEvent) {
@@ -503,6 +524,50 @@ function providerName(id: number) {
 }
 function machineName(id: string) {
   return machines.value.find((item) => item.deviceId === id)?.hostname || id;
+}
+function shortDeviceId(id: string) {
+  return id.length > 18 ? `${id.slice(0, 8)}…${id.slice(-6)}` : id;
+}
+function reviewMachineMerge(group: DuplicateMachineGroup) {
+  // 候选只用于提示；保留全部原记录，管理员核对完整设备标识后再提交合并。
+  const ids = [group.targetDeviceId, ...group.sourceDeviceIds];
+  const members = ids.map((id) => machines.value.find((item) => item.deviceId === id));
+  if (new Set(ids).size !== ids.length || ids.length < 2 || members.some((item) => !item)) {
+    notify("机器记录已更新，请刷新后重新核对", "error");
+    return;
+  }
+  mergeMembers.value = members as Machine[];
+  mergeTargetId.value = group.targetDeviceId;
+  mergeError.value = "";
+  selectedMachine.value = null;
+  openModal("merge");
+}
+async function mergeMachines() {
+  if (submitting.value || !validMergeTarget.value || !mergeSourceIds.value.length) return;
+  submitting.value = true;
+  mergeError.value = "";
+  const sourceDeviceIds = [...mergeSourceIds.value];
+  try {
+    const result = await api<Machine>(`/machines/${encodeURIComponent(mergeTargetId.value)}/merge`, {
+      method: "POST", body: jsonBody({ sourceDeviceIds }),
+    });
+    // 等待可能在合并前发出的轮询结束，再获取一次最新状态，避免旧响应覆盖合并结果。
+    if (refreshTask) await refreshTask;
+    const mergedIds = new Set([result.deviceId, ...sourceDeviceIds]);
+    machines.value = [result, ...machines.value.filter((item) => !mergedIds.has(item.deviceId))];
+    duplicateGroups.value = duplicateGroups.value.filter((group) =>
+      ![group.targetDeviceId, ...group.sourceDeviceIds].some((id) => mergedIds.has(id)),
+    );
+    await refresh();
+    submitting.value = false;
+    closeModal();
+    notify("机器记录已合并，原设备标识后续上报将更新保留记录");
+  } catch (error) {
+    mergeError.value = error instanceof Error ? error.message : "合并失败，请刷新后重试";
+    failure(error);
+  } finally {
+    submitting.value = false;
+  }
 }
 function networkLabel(os: string) {
   return (
@@ -902,6 +967,25 @@ onUnmounted(() => {
                   查看全部 <ArrowUpRight :size="15" />
                 </button>
               </div>
+              <section
+                v-if="page === 'machines' && duplicateGroups.length"
+                class="duplicate-candidates"
+                aria-label="待核对的重复机器"
+              >
+                <div class="duplicate-heading">
+                  <Copy :size="17" />
+                  <div>
+                    <strong>发现 {{ duplicateGroups.length }} 组可能重复的机器</strong>
+                    <p>这些记录的主机名、系统及网卡标识相同，请核对后合并。</p>
+                  </div>
+                </div>
+                <div v-for="group in duplicateGroups" :key="group.targetDeviceId" class="duplicate-group">
+                  <span><strong>{{ machineName(group.targetDeviceId) }}</strong> · {{ group.sourceDeviceIds.length + 1 }} 条记录</span>
+                  <button class="button secondary" @click="reviewMachineMerge(group)">
+                    核对并合并<ArrowRight :size="14" />
+                  </button>
+                </div>
+              </section>
               <div class="table-toolbar">
                 <div class="filter-tabs">
                   <button
@@ -961,6 +1045,7 @@ onUnmounted(() => {
                               >{{ networkLabel(machine.os) }}<i>·</i
                               >{{ machine.interfaces.length }} 个网卡</span
                             >
+                            <code class="machine-device-id" :title="machine.deviceId">ID {{ shortDeviceId(machine.deviceId) }}</code>
                           </div>
                         </div>
                       </td>
@@ -1508,7 +1593,7 @@ onUnmounted(() => {
   >
     <section
       class="modal"
-      :class="{ 'wide-modal': modal === 'rule' || modal === 'onboarding' }"
+      :class="{ 'wide-modal': modal === 'rule' || modal === 'onboarding' || modal === 'merge' }"
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"
@@ -1522,7 +1607,9 @@ onUnmounted(() => {
                 ? "DYNAMIC DNS"
                 : modal === "onboarding"
                   ? "CONNECT A MACHINE"
-                  : "CONFIRM ACTION"
+                  : modal === "merge"
+                    ? "MERGE MACHINE RECORDS"
+                    : "CONFIRM ACTION"
           }}</span>
           <h2 id="modal-title">
             {{
@@ -1536,7 +1623,9 @@ onUnmounted(() => {
                     : "新建解析规则"
                   : modal === "onboarding"
                     ? "把机器接入你的网络空间"
-                    : confirmation.title
+                    : modal === "merge"
+                      ? "核对并合并机器记录"
+                      : confirmation.title
             }}
           </h2>
         </div>
@@ -1938,6 +2027,42 @@ onUnmounted(() => {
           </button>
         </div>
       </div>
+      <form v-else-if="modal === 'merge'" @submit.prevent="mergeMachines">
+        <div class="modal-body merge-body">
+          <p class="confirm-detail">请确认以下记录属于同一台机器，并选择要保留的设备标识。</p>
+          <label for="merge-target">保留的设备标识</label>
+          <select id="merge-target" v-model="mergeTargetId" :disabled="submitting" @change="mergeError = ''">
+            <option v-for="machine in mergeMembers" :key="machine.deviceId" :value="machine.deviceId">
+              {{ machine.hostname }} · {{ machine.deviceId }}
+            </option>
+          </select>
+          <p class="field-hint">默认选择最近上报的记录。合并后使用所有记录中最新的网络快照。</p>
+          <ul class="merge-members" aria-label="将合并的机器记录">
+            <li v-for="machine in mergeMembers" :key="machine.deviceId">
+              <div class="merge-member-heading">
+                <strong>{{ machine.hostname }}</strong>
+                <span class="pill" :class="machine.deviceId === mergeTargetId ? 'green' : 'gray'">
+                  {{ machine.deviceId === mergeTargetId ? "保留" : "并入" }}
+                </span>
+              </div>
+              <code>{{ machine.deviceId }}</code>
+              <span>{{ networkLabel(machine.os) }} · {{ machine.interfaces.length }} 个网卡 · 最近上报 {{ dateTime(machine.lastSeen) }}</span>
+            </li>
+          </ul>
+          <div class="form-note">
+            <Link2 :size="16" />
+            <span>关联的 DDNS 规则将保留并绑定到合并后的机器。所有原设备标识继续上报时，都会更新这条保留记录。</span>
+          </div>
+          <p v-if="mergeError" class="form-error" role="alert">{{ mergeError }}</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="button secondary" :disabled="submitting" @click="closeModal">取消</button>
+          <button type="submit" class="button primary" :disabled="submitting || !validMergeTarget || !mergeSourceIds.length">
+            <LoaderCircle v-if="submitting" class="spin" :size="16" />
+            确认合并 {{ mergeMembers.length }} 条记录
+          </button>
+        </div>
+      </form>
       <div v-else-if="modal === 'confirm'">
         <div class="modal-body">
           <p class="confirm-detail">{{ confirmation.detail }}</p>

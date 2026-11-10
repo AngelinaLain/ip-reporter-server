@@ -26,6 +26,8 @@ public class MachineController {
         return request.getRemoteAddr();
     }
     @GetMapping("/api/machines") List<MachineService.MachineView> machines() { return machines.list(); }
+    @GetMapping("/api/machines/duplicates") List<MachineService.DuplicateGroup> duplicates() { return machines.duplicates(); }
+    @PostMapping("/api/machines/{id}/merge") MachineService.MachineView merge(@PathVariable String id,@Valid @RequestBody MachineService.MergeInput input) { return machines.merge(id,input.sourceDeviceIds()); }
     @GetMapping("/api/machines/{id}") MachineService.MachineView machine(@PathVariable String id) { return machines.get(id); }
     @DeleteMapping("/api/machines/{id}") @ResponseStatus(HttpStatus.NO_CONTENT) void delete(@PathVariable String id) { machines.delete(id); }
     @GetMapping("/api/dashboard") Map<String,Long> dashboard() {

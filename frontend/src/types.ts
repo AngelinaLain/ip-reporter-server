@@ -21,6 +21,10 @@ export interface Machine {
   ipv6: string[];
   interfaces: NetworkInterface[];
 }
+export interface DuplicateMachineGroup {
+  targetDeviceId: string;
+  sourceDeviceIds: string[];
+}
 export type ProviderType = "ALIYUN" | "TENCENT" | "CLOUDFLARE";
 export interface Provider {
   id: number;

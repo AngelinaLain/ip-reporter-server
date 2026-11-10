@@ -1,6 +1,6 @@
 # GitHub Release 客户端镜像
 
-本目录为 Compose 中的 `mirror` 服务。它启动后立即检查一次，此后按 `CLIENT_SYNC_INTERVAL_SECONDS` 间隔检查。默认每小时查询所配置仓库最新的正式 Release。设置 `CLIENT_RELEASE_TAG=v1.1.0` 可以固定到某个版本。仓库留空时镜像服务空闲，已有缓存仍可由 Nginx 提供。
+本目录为 Compose 中的 `mirror` 服务。它启动后立即检查一次，此后按 `CLIENT_SYNC_INTERVAL_SECONDS` 间隔检查。默认每小时查询所配置仓库最新的正式 Release。设置 `CLIENT_RELEASE_TAG=v1.1.2` 可以固定到某个版本。仓库留空时镜像服务空闲，已有缓存仍可由 Nginx 提供。
 
 ```sh
 docker compose logs --tail=100 mirror

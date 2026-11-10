@@ -44,7 +44,7 @@ class BackendIntegrationTest {
     static final String TOKEN="test-report-token-123456789";
 
     @BeforeEach void clean() {
-        jdbc.update("DELETE FROM ddns_logs");jdbc.update("DELETE FROM ddns_rules");jdbc.update("DELETE FROM dns_providers");jdbc.update("DELETE FROM machines");
+        jdbc.update("DELETE FROM ddns_logs");jdbc.update("DELETE FROM ddns_rules");jdbc.update("DELETE FROM dns_providers");jdbc.update("DELETE FROM machine_device_aliases");jdbc.update("DELETE FROM machines");
         when(aliyun.type()).thenReturn("ALIYUN");
         doAnswer(call->new DnsSyncResult("remote-123",((DnsRecord)call.getArgument(1)).value(),"UPDATED")).when(aliyun).upsert(any(),any());
     }

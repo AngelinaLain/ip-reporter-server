@@ -19,7 +19,7 @@ services:
       driver: json-file
       options: { max-size: "10m", max-file: "3" }
   backend:
-    image: ${IMAGE_PREFIX:-ghcr.io/angelinalain/ip-reporter-server}-backend:${IMAGE_TAG:-1.0.0}
+    image: ${IMAGE_PREFIX:-ghcr.io/angelinalain/ip-reporter-server}-backend:${IMAGE_TAG:-1.0.1}
     restart: unless-stopped
     depends_on:
       db: { condition: service_healthy }
@@ -50,7 +50,7 @@ services:
       driver: json-file
       options: { max-size: "10m", max-file: "3" }
   mirror:
-    image: ${IMAGE_PREFIX:-ghcr.io/angelinalain/ip-reporter-server}-mirror:${IMAGE_TAG:-1.0.0}
+    image: ${IMAGE_PREFIX:-ghcr.io/angelinalain/ip-reporter-server}-mirror:${IMAGE_TAG:-1.0.1}
     restart: unless-stopped
     environment:
       CLIENT_GITHUB_REPOSITORY: ${CLIENT_GITHUB_REPOSITORY:-}
@@ -68,7 +68,7 @@ services:
       driver: json-file
       options: { max-size: "5m", max-file: "2" }
   frontend:
-    image: ${IMAGE_PREFIX:-ghcr.io/angelinalain/ip-reporter-server}-frontend:${IMAGE_TAG:-1.0.0}
+    image: ${IMAGE_PREFIX:-ghcr.io/angelinalain/ip-reporter-server}-frontend:${IMAGE_TAG:-1.0.1}
     restart: unless-stopped
     depends_on:
       backend: { condition: service_healthy, restart: true }

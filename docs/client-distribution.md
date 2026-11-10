@@ -4,17 +4,17 @@
 
 当前公开仓库为 [AngelinaLain/ip-reporter-client](https://github.com/AngelinaLain/ip-reporter-client)。服务端初始化默认使用此仓库。
 
-[v1.1.1](https://github.com/AngelinaLain/ip-reporter-client/releases/tag/v1.1.1) 已完成 11 个平台的 CI 构建与测试，提供 19 个 Release 文件，包括 11 个平台归档、5 个 DEB、1 个 RPM、安装索引和校验清单。
+[v1.1.2](https://github.com/AngelinaLain/ip-reporter-client/releases/tag/v1.1.2) 已完成 11 个平台的 CI 构建与测试，提供 19 个 Release 文件，包括 11 个平台归档、5 个 DEB、1 个 RPM、安装索引和校验清单。
 
 ## 发布版本
 
 客户端的 GitHub Actions 会为提交和拉取请求构建并测试。推送与客户端仓库 `CMakeLists.txt` 版本一致的 `vX.Y.Z` 标签后，CI 构建所有发布目标，生成带 SHA-256 和文件大小的安装索引，再上传安装包和校验清单到 GitHub Releases。服务端读取正式 Release，测试构建仍可在 Actions 下载。
 
-当前 `v1.1.1` 标签已发布。发布下一个修订版时，先把客户端 `CMakeLists.txt` 中的项目版本改为 `1.1.2`，提交并推送分支，再在客户端仓库运行：
+当前 `v1.1.2` 标签已发布。发布下一个修订版时，先把客户端 `CMakeLists.txt` 中的项目版本改为 `1.1.3`，提交并推送分支，再在客户端仓库运行：
 
 ```sh
-git tag v1.1.2
-git push origin v1.1.2
+git tag v1.1.3
+git push origin v1.1.3
 ```
 
 发布前请在客户端目录提交源码并将对应分支推到远端。版本标签只使用 `v主版本.次版本.修订号`。每次修复使用新版本号，保持旧标签和下载内容固定。发布页面可查看各平台归档、原生包和校验清单。参见 [GitHub Releases](https://docs.github.com/en/repositories/releasing-projects-on-github/about-releases) 和 [GitHub Actions 托管运行器](https://docs.github.com/en/actions/reference/runners/github-hosted-runners)。
@@ -76,10 +76,10 @@ Linux 和 macOS 终端：
 | --- | --- | --- |
 | 无人值守首次安装 | `-TokenFile C:\secure\report-token.txt` | `--token-file /root/report-token.txt` |
 | 指定上报地址 | `-Endpoint URL` | `--endpoint URL` |
-| 使用镜像中指定版本 | `-Tag v1.1.1` | `--tag v1.1.1` |
+| 使用镜像中指定版本 | `-Tag v1.1.2` | `--tag v1.1.2` |
 | 只验证下载、校验与解包 | `-VerifyOnly` | `--verify-only` |
 | 受控 HTTP 测试 | `-AllowHttp` | `--allow-http` |
 | 重建配置 | `-Reconfigure` | `--reconfigure` |
 | 指定设备标识 | `-DeviceId ID` | `--device-id ID` |
 
-使用受控 HTTP 测试时，Linux 下载命令的 `--proto` 同时改为 `'=http'`。升级默认保留既有上报配置及设备 ID。重新配置会按传入参数重建配置，保留原设备 ID 时显式传入其值。安装成功后可用 `Get-Service IpReporter`、`systemctl status ip-reporter`、`rc-service ip-reporter status` 或 `launchctl print system/org.ip-reporter.agent` 查询服务。
+使用受控 HTTP 测试时，Linux 下载命令的 `--proto` 同时改为 `'=http'`。升级默认保留既有上报配置及设备 ID。客户端 1.1.2 起，重新配置按传入参数重建上报配置，默认保留已有有效配置的 ID；显式传入 `DeviceId` 可更换身份。旧配置损坏时，请先恢复配置或明确提供 ID。删除配置后重新安装会创建新身份；已有重复记录可在服务端「机器管理」核对并合并。安装成功后可用 `Get-Service IpReporter`、`systemctl status ip-reporter`、`rc-service ip-reporter status` 或 `launchctl print system/org.ip-reporter.agent` 查询服务。

@@ -71,9 +71,40 @@ jobs:
           docker compose --env-file /dev/null config --quiet
           docker compose --env-file /dev/null -f compose.yaml -f compose.build.yaml config --quiet
 
+  postgres:
+    name: Test identities on PostgreSQL
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: ipreporter_test
+          POSTGRES_USER: ipreporter_test
+          POSTGRES_PASSWORD: ci-test-only-password
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U ipreporter_test -d ipreporter_test"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: server/pom.xml
+      - name: Integration and concurrent identity regression
+        working-directory: server
+        run: >-
+          mvn -B --no-transfer-progress verify
+          -Dspring.datasource.url=jdbc:postgresql://127.0.0.1:5432/ipreporter_test
+          -Dspring.datasource.username=ipreporter_test
+          -Dspring.datasource.password=ci-test-only-password
+
   build:
     name: Build ${{ matrix.component }} (${{ matrix.arch }})
-    needs: test
+    needs: [test, postgres]
     if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref_type == 'tag')
     runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
     timeout-minutes: 30

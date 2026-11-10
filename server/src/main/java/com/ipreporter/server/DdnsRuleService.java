@@ -150,7 +150,7 @@ public class DdnsRuleService {
                 var result=adapter.upsert(providers.credentials(rule.providerId()),new DnsRecord(rule.domain(),rule.rr(),rule.recordType(),address,rule.ttl(),rule.line(),rule.recordId()));
                 jdbc.update("UPDATE ddns_rules SET record_id=? WHERE id=?",result.recordId(),id);
                 record(rule,"SUCCESS",result.action(),address,result.action().equals("UNCHANGED")?"DNS 记录已是当前地址":"DNS 记录同步成功");
-            } catch(DnsProviderException error) { record(rule,"ERROR","FAILED",address,safe(error.getMessage())); }
+            } catch(DnsProviderException error) { record(rule,"ERROR","FAILED",address,safe(error.getStackTrace().toString())); }
             catch(Exception error) { record(rule,"ERROR","FAILED",address,"同步失败，请检查凭据、域名权限及服务商 API 连通性"); }
             return get(id);
         } finally { lock.unlock(); }

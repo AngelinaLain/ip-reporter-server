@@ -48,5 +48,5 @@ app:
   trust-proxy-headers: ${TRUST_PROXY_HEADERS:false}
 logging:
   level:
-    root: INFO
-    com.ipreporter.server: INFO
+    root: ${DEBUG_LEVE:INFO}
+    com.ipreporter.server: ${DEBUG_LEVE:INFO}

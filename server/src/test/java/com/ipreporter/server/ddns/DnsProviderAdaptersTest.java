@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import com.aliyuncs.IAcsClient;
+import com.aliyuncs.DefaultAcsClient;
 import com.aliyuncs.alidns.model.v20150109.*;
 import com.aliyuncs.exceptions.ClientException;
 import com.aliyuncs.http.ProtocolType;
@@ -39,6 +40,25 @@ class DnsProviderAdaptersTest {
     }
     private static DescribeRecordListResponse tcList(RecordListItem... values) {
         var response = new DescribeRecordListResponse(); response.setRecordList(values); return response;
+    }
+
+    @Test void aliyunRealClientFactoryInitializesTransportWithoutNetwork() {
+        // 不替换 SDK 工厂、不发送请求：覆盖 mock 客户端无法发现的真实 HTTP 初始化路径。
+        var client = assertInstanceOf(DefaultAcsClient.class, assertDoesNotThrow(() -> AliyunDnsProvider.client(CREDS)));
+        try {
+            assertNotNull(client.getHttpClient());
+            var config = client.getProfile().getHttpClientConfig();
+            assertNotNull(config.getClientType());
+            assertEquals(ProtocolType.HTTPS, config.getProtocolType());
+            assertFalse(config.isIgnoreSSLCerts());
+            assertEquals(3000L, config.getConnectionTimeoutMillis());
+            assertEquals(10000L, config.getReadTimeoutMillis());
+            assertEquals(10000L, config.getWriteTimeoutMillis());
+            assertFalse(client.isAutoRetry());
+            assertEquals(0, client.getMaxRetryNumber());
+        } finally {
+            assertDoesNotThrow(client::shutdown);
+        }
     }
 
     @Test void aliyunCreatesOnlyWhenNoExactRecordExists() throws Exception {

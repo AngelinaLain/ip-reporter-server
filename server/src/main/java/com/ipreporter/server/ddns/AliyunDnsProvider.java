@@ -23,9 +23,10 @@ public class AliyunDnsProvider implements DnsProvider {
     AliyunDnsProvider(Function<DnsCredentials, IAcsClient> clients) { this.clients = clients; }
     @Override public String type() { return "ALIYUN"; }
 
-    private static IAcsClient client(DnsCredentials credentials) {
+    static IAcsClient client(DnsCredentials credentials) {
         DefaultProfile profile = DefaultProfile.getProfile("cn-hangzhou", credentials.accessKeyId(), credentials.accessKeySecret());
-        HttpClientConfig http = new HttpClientConfig();
+        // SDK 默认配置会设置 HTTP 实现类型；空构造器的 clientType 为 null，构造客户端时就会失败。
+        HttpClientConfig http = HttpClientConfig.getDefault();
         http.setConnectionTimeoutMillis(3000);
         http.setReadTimeoutMillis(10000);
         http.setWriteTimeoutMillis(10000);
@@ -48,9 +49,11 @@ public class AliyunDnsProvider implements DnsProvider {
     @Override public DnsSyncResult upsert(DnsCredentials credentials, DnsRecord desired) {
         DnsProviderSupport.validate(credentials, desired);
         IAcsClient client = null;
+        String operation = "初始化客户端";
         final long deadline = DnsProviderSupport.operationDeadline();
         try {
             client = clients.apply(credentials);
+            operation = "查询解析记录";
             String domain = DnsProviderSupport.domain(desired);
             String rr = DnsProviderSupport.rr(desired);
             String line = DnsProviderSupport.line(desired, "default");
@@ -77,6 +80,7 @@ public class AliyunDnsProvider implements DnsProvider {
             }
             var existing = DnsProviderSupport.select(matches, desired, DescribeDomainRecordsResponse.Record::getRecordId);
             if (existing == null) {
+                operation = "创建解析记录";
                 AddDomainRecordRequest request = new AddDomainRecordRequest();
                 request.setDomainName(domain); request.setRR(rr); request.setType(desired.type());
                 request.setValue(desired.value()); request.setTTL((long) desired.ttl()); request.setLine(line);
@@ -89,13 +93,14 @@ public class AliyunDnsProvider implements DnsProvider {
             if (DnsProviderSupport.sameValue(existing.getValue(), desired.value()) && Objects.equals(existing.getTTL(), (long) desired.ttl()))
                 return new DnsSyncResult(existing.getRecordId(), desired.value(), "UNCHANGED");
             UpdateDomainRecordRequest request = new UpdateDomainRecordRequest();
+            operation = "更新解析记录";
             request.setRecordId(existing.getRecordId()); request.setRR(rr); request.setType(desired.type());
             request.setValue(desired.value()); request.setTTL((long) desired.ttl()); request.setLine(line);
             send(client, request, deadline);
             return new DnsSyncResult(existing.getRecordId(), desired.value(), "UPDATED");
         } catch (DnsProviderException exception) { throw exception; }
-        catch (ClientException exception) { throw DnsProviderSupport.remoteError("阿里云 DNS", exception.getErrCode()); }
-        catch (RuntimeException exception) { throw DnsProviderSupport.remoteError("阿里云 DNS", null); }
+        catch (ClientException exception) { throw AliyunDnsErrors.request(operation, exception, credentials); }
+        catch (RuntimeException exception) { throw AliyunDnsErrors.runtime(operation, client == null); }
         finally { if (client != null) try { client.shutdown(); } catch (RuntimeException ignored) { } }
     }
 }

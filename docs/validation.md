@@ -9,6 +9,8 @@
 - [v1.0.0 Release](https://github.com/AngelinaLain/ip-reporter-server/releases/tag/v1.0.0) 提供部署 TGZ 与 SHA-256 清单。三个 GHCR 包均显示 Public；使用无认证请求分别验证 `1.0.0` manifest，可读取 Linux amd64 与 arm64 两个架构。
 - 默认 Compose 仅拉取发布镜像，无源码构建或宿主机脚本绑定挂载。`compose.build.yaml` 使用独立的 `:local` 镜像名进行源码构建。前端镜像实际构建通过，包含两个客户端安装脚本。
 - Windows PowerShell 5.1 和 Ubuntu WSL 的初始化脚本均在临时目录生成正确镜像默认值和独立随机密钥；第二次执行保留已有配置，POSIX 配置权限为 `0600`。
+- 下载真实 Release 的部署包并核对 SHA-256，使用空的 Docker 认证配置拉取全部发布镜像。在端口 `18083` 的独立 Compose 项目中，数据库、后端、前端均达到 healthy，镜像同步服务运行正常；HTTP 验证覆盖 Vue 页面、管理员登录及两个内置安装脚本。验收后清理此项目的容器与数据卷，原服务端保持健康。
+- 本机 Docker Desktop 再次在 Compose 创建容器后报 `No such container`，本地验收按已确认健康的依赖顺序补做启动。新增的 [main 分支 CI](https://github.com/AngelinaLain/ip-reporter-server/actions/runs/42811191408) 已在干净运行器上通过 `docker compose pull` 与 `docker compose up -d --no-build --wait`，并校验前端健康、会话 API 和镜像内两个安装脚本，避免把本机恢复步骤当作所有部署的必需操作。
 
 ## 1.1.1 公开发布与安装分发
 

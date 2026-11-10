@@ -31,7 +31,7 @@ Release 的 `ip-reporter-server-X.Y.Z-deploy.tar.gz` 只包含 `compose.yaml`、
 
 ## GHCR 公开权限
 
-代码仓库公开与容器包公开是两个设置。首次发布后，在账号 Packages 中分别打开三个新容器包的 Package settings，将 Visibility 设置为 Public。只发布项目构建内容，不包含本机 `.env`、数据库或客户端仓库。公开包允许匿名拉取，部署设备不需要 `docker login`。详见 [GitHub 容器仓库](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry)和[包可见性](https://docs.github.com/en/packages/learn-github-packages/configuring-a-packages-access-control-and-visibility)。
+代码仓库公开与容器包公开是两个设置。本仓库 v1.0.0 的三个包已显示 Public，并通过匿名访问验证。派生新仓库首次发布时，请检查账号 Packages 中三个容器包的 Visibility；如果是 Private，再通过 Package settings 改为 Public。只发布项目构建内容，不包含本机 `.env`、数据库或客户端仓库。公开包允许匿名拉取，部署设备不需要 `docker login`。详见 [GitHub 容器仓库](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry)和[包可见性](https://docs.github.com/en/packages/learn-github-packages/configuring-a-packages-access-control-and-visibility)。
 
 如果 CI 报 `permission_denied: write_package`，检查发布任务的 `packages: write`，以及容器包是否已关联当前仓库、是否允许此仓库的 Actions 访问。不要向源码或 Compose 写入个人 Token。如果匿名拉取返回 `denied`，先核对包公开设置和已发布标签。
 

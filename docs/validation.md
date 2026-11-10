@@ -2,6 +2,14 @@
 
 验证日期：2026-11-10。以下区分实际执行结果和实现目标；CI 文件存在不等于已运行所有系统。
 
+## 服务端 1.0.0 独立仓库与容器发布
+
+- 创建公开仓库 [AngelinaLain/ip-reporter-server](https://github.com/AngelinaLain/ip-reporter-server)，使用本机 Git 推送 `main` 和 `v1.0.0`。发布前检查 77 个源码文件，排除本机 `.env`、凭据、报告、数据库、客户端检出目录和构建产物。
+- [实际工作流](https://github.com/AngelinaLain/ip-reporter-server/actions/runs/42810120669) 的 13 个任务全部成功：3 组测试、3 个组件在 amd64 / arm64 上的 6 组原生构建、3 组多架构 manifest 发布和 1 个部署包发布。测试包括 Maven 后端、Vue 单测与构建、12 项镜像及 6 项安装脚本回归。
+- [v1.0.0 Release](https://github.com/AngelinaLain/ip-reporter-server/releases/tag/v1.0.0) 提供部署 TGZ 与 SHA-256 清单。三个 GHCR 包均显示 Public；使用无认证请求分别验证 `1.0.0` manifest，可读取 Linux amd64 与 arm64 两个架构。
+- 默认 Compose 仅拉取发布镜像，无源码构建或宿主机脚本绑定挂载。`compose.build.yaml` 使用独立的 `:local` 镜像名进行源码构建。前端镜像实际构建通过，包含两个客户端安装脚本。
+- Windows PowerShell 5.1 和 Ubuntu WSL 的初始化脚本均在临时目录生成正确镜像默认值和独立随机密钥；第二次执行保留已有配置，POSIX 配置权限为 `0600`。
+
 ## 1.1.1 公开发布与安装分发
 
 - `client/` 单独完成 Windows x64、Ubuntu 24.04 x64、Alpine 3.22 x64 和 Rocky Linux 9 x64 的构建、CTest 与打包。核对了实际 ZIP、TGZ、DEB、RPM 的 CPack 校验文件和包内脚本路径。GitHub 工作流通过 actionlint 检查。

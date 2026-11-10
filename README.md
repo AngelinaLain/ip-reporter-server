@@ -6,6 +6,8 @@
 
 [v1.1.1 正式版本](https://github.com/AngelinaLain/ip-reporter-client/releases/tag/v1.1.1) 已发布，11 个平台的 [CI 构建与测试](https://github.com/AngelinaLain/ip-reporter-client/actions/runs/42773707870) 全部通过。本机服务端已同步此版本，可在「接入机器」中复制安装命令。
 
+服务端 [v1.0.0](https://github.com/AngelinaLain/ip-reporter-server/releases/tag/v1.0.0) 已发布，[CI 测试与镜像构建](https://github.com/AngelinaLain/ip-reporter-server/actions/runs/42810120669) 全部通过。三个公开镜像均已验证可匿名读取，并包含 Linux amd64 / arm64 manifest。
+
 ## 启动服务端
 
 先下载服务端仓库：
@@ -50,7 +52,7 @@ docker compose -f compose.yaml -f compose.build.yaml up --build -d
 
 ## 发布和接入
 
-1. 将 `client/` 的内容提交到客户端 GitHub 仓库。确认 `CMakeLists.txt` 中的版本后创建并推送对应的 `vX.Y.Z` 标签。
+1. 在独立的客户端仓库提交更新，确认 `CMakeLists.txt` 中的版本后创建并推送对应的 `vX.Y.Z` 标签。
 2. GitHub Actions 完成各平台构建和测试后发布 Release，包含安装包、`INSTALL-INDEX.json` 和 `SHA256SUMS.txt`。
 3. 服务端 `mirror` 容器定期读取 Release。全部文件通过校验后，Nginx 才会提供该版本给设备下载。
 4. 设备运行安装命令后，脚本会选包、校验、配置和启动服务。重新运行命令可以升级，默认保留原有配置。

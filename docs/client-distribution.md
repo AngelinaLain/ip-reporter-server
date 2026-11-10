@@ -1,14 +1,14 @@
 # 客户端发布与分发
 
-客户端仓库在 `client/`。将此目录的内容作为 GitHub 仓库的根目录，包含隐藏的 `.github/`。完整工作区和服务端的 `.env` 不进入客户端仓库。
+客户端独立维护，服务端仓库不包含客户端源码。派生自己的客户端仓库时应保留客户端的 `.github/`，服务端的 `.env` 不进入客户端仓库。
 
-当前公开仓库为 [AngelinaLain/ip-reporter-client](https://github.com/AngelinaLain/ip-reporter-client)，本地 `client/` 已配置对应 `origin`。服务端初始化默认使用此仓库。
+当前公开仓库为 [AngelinaLain/ip-reporter-client](https://github.com/AngelinaLain/ip-reporter-client)。服务端初始化默认使用此仓库。
 
 [v1.1.1](https://github.com/AngelinaLain/ip-reporter-client/releases/tag/v1.1.1) 已完成 11 个平台的 CI 构建与测试，提供 19 个 Release 文件，包括 11 个平台归档、5 个 DEB、1 个 RPM、安装索引和校验清单。
 
 ## 发布版本
 
-客户端的 GitHub Actions 会为提交和拉取请求构建并测试。推送与 `client/CMakeLists.txt` 版本一致的 `vX.Y.Z` 标签后，CI 构建所有发布目标，生成带 SHA-256 和文件大小的安装索引，再上传安装包和校验清单到 GitHub Releases。服务端读取正式 Release，测试构建仍可在 Actions 下载。
+客户端的 GitHub Actions 会为提交和拉取请求构建并测试。推送与客户端仓库 `CMakeLists.txt` 版本一致的 `vX.Y.Z` 标签后，CI 构建所有发布目标，生成带 SHA-256 和文件大小的安装索引，再上传安装包和校验清单到 GitHub Releases。服务端读取正式 Release，测试构建仍可在 Actions 下载。
 
 当前 `v1.1.1` 标签已发布。发布下一个修订版时，先把客户端 `CMakeLists.txt` 中的项目版本改为 `1.1.2`，提交并推送分支，再在客户端仓库运行：
 

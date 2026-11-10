@@ -6,7 +6,7 @@
 
 [客户端 v1.1.2](https://github.com/AngelinaLain/ip-reporter-client/releases/tag/v1.1.2) 已发布，11 个平台的 [CI 构建与测试](https://github.com/AngelinaLain/ip-reporter-client/actions/runs/42830312573) 全部通过。此版本修复重新配置时意外更换设备 ID 的问题，服务端同步后可在「接入机器」中复制安装命令。
 
-服务端 [v1.0.0](https://github.com/AngelinaLain/ip-reporter-server/releases/tag/v1.0.0) 已发布，[CI 测试与镜像构建](https://github.com/AngelinaLain/ip-reporter-server/actions/runs/42810120669) 全部通过。三个公开镜像均已验证可匿名读取，并包含 Linux amd64 / arm64 manifest。
+服务端 [v1.0.1](https://github.com/AngelinaLain/ip-reporter-server/releases/tag/v1.0.1) 已发布，[CI 测试、镜像构建与 Compose 验收](https://github.com/AngelinaLain/ip-reporter-server/actions/runs/42831310795) 全部通过。三个公开镜像均已验证可匿名读取，并包含 Linux amd64 / arm64 manifest。
 
 ## 启动服务端
 

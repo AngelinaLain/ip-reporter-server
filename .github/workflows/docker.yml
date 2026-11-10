@@ -1,0 +1,216 @@
+name: Test and publish Docker images
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*.*.*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docker-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref_type != 'tag' }}
+
+jobs:
+  test:
+    name: Test ${{ matrix.component }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        component: [backend, frontend, distribution]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+      - name: Validate release version
+        run: python ci/check-version.py
+      - uses: actions/setup-java@v6
+        if: matrix.component == 'backend'
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: server/pom.xml
+      - name: Backend tests
+        if: matrix.component == 'backend'
+        working-directory: server
+        run: mvn -B --no-transfer-progress verify
+      - uses: actions/setup-node@v7
+        if: matrix.component == 'frontend'
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Frontend tests and build
+        if: matrix.component == 'frontend'
+        working-directory: frontend
+        run: |
+          npm ci
+          npm test
+          npm run build
+      - name: Mirror and bootstrap tests
+        if: matrix.component == 'distribution'
+        run: |
+          python -m unittest discover -s distribution -v
+          python -m unittest discover -s distribution/bootstrap/tests -v
+          sh -n scripts/init-server.sh distribution/bootstrap/install.sh
+      - name: Validate Compose variants
+        if: matrix.component == 'distribution'
+        env:
+          DB_PASSWORD: ci-placeholder
+          ADMIN_PASSWORD: ci-placeholder
+          REPORT_TOKEN: ci-placeholder
+          APP_ENCRYPTION_KEY: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+        run: |
+          docker compose --env-file /dev/null config --quiet
+          docker compose --env-file /dev/null -f compose.yaml -f compose.build.yaml config --quiet
+
+  build:
+    name: Build ${{ matrix.component }} (${{ matrix.arch }})
+    needs: test
+    if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref_type == 'tag')
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        component: [backend, frontend, mirror]
+        arch: [amd64, arm64]
+        include:
+          - component: backend
+            context: server
+            dockerfile: server/Dockerfile
+          - component: frontend
+            context: .
+            dockerfile: frontend/Dockerfile
+          - component: mirror
+            context: distribution
+            dockerfile: distribution/Dockerfile
+    steps:
+      - uses: actions/checkout@v7
+      - name: Image name
+        id: image
+        shell: bash
+        run: echo "name=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/ip-reporter-server-${COMPONENT}" >> "$GITHUB_OUTPUT"
+        env:
+          COMPONENT: ${{ matrix.component }}
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push platform digest
+        id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/${{ matrix.arch }}
+          outputs: type=image,name=${{ steps.image.outputs.name }},push-by-digest=true,name-canonical=true,push=true
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.licenses=MIT
+          cache-from: type=gha,scope=${{ matrix.component }}-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.component }}-${{ matrix.arch }}
+      - name: Export digest
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/digests"
+          touch "$RUNNER_TEMP/digests/${DIGEST#sha256:}"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: digests-${{ matrix.component }}-${{ matrix.arch }}
+          path: ${{ runner.temp }}/digests/*
+          retention-days: 1
+          if-no-files-found: error
+
+  publish:
+    name: Publish ${{ matrix.component }} manifest
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        component: [backend, frontend, mirror]
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: digests-${{ matrix.component }}-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/digests
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Merge native architectures and tag
+        env:
+          COMPONENT: ${{ matrix.component }}
+        shell: bash
+        working-directory: ${{ runner.temp }}/digests
+        run: |
+          set -euo pipefail
+          image="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/ip-reporter-server-${COMPONENT}"
+          tag=main
+          tags=(--tag "$image:main" --tag "$image:sha-${GITHUB_SHA}")
+          if [[ "$GITHUB_REF_TYPE" == tag ]]; then
+            tag="${GITHUB_REF_NAME#v}"
+            tags=(--tag "$image:${GITHUB_REF_NAME#v}" --tag "$image:latest" --tag "$image:sha-${GITHUB_SHA}")
+          fi
+          sources=()
+          for digest in *; do sources+=("$image@sha256:$digest"); done
+          [[ ${#sources[@]} == 2 ]]
+          docker buildx imagetools create "${tags[@]}" "${sources[@]}"
+          docker buildx imagetools inspect "$image:$tag" --raw | python -c 'import json,sys; data=json.load(sys.stdin); platforms={(x.get("platform",{}).get("os"),x.get("platform",{}).get("architecture")) for x in data["manifests"]}; assert {("linux","amd64"),("linux","arm64")} <= platforms'
+          printf '%s\n' "Published $image for linux/amd64 and linux/arm64" >> "$GITHUB_STEP_SUMMARY"
+
+  release:
+    name: Publish deployment bundle
+    needs: publish
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - name: Package Compose deployment files
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          mkdir -p staging/ip-reporter-server/scripts release
+          cp compose.yaml .env.example staging/ip-reporter-server/
+          cp scripts/init-server.sh scripts/init-server.ps1 staging/ip-reporter-server/scripts/
+          tar -C staging -czf "release/ip-reporter-server-${version}-deploy.tar.gz" ip-reporter-server
+          (cd release && sha256sum *.tar.gz > SHA256SUMS.txt)
+          cat > release/notes.md <<EOF
+          Docker Compose deployment for linux/amd64 and linux/arm64.
+
+          Images: ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/ip-reporter-server-{backend,frontend,mirror}:${version}
+
+          Extract the deployment bundle, run sh scripts/init-server.sh (or the PowerShell equivalent), then docker compose pull followed by docker compose up -d.
+          EOF
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --verify-tag --title "$GITHUB_REF_NAME" --notes-file release/notes.md
+          gh release upload "$GITHUB_REF_NAME" release/*.tar.gz release/SHA256SUMS.txt --clobber

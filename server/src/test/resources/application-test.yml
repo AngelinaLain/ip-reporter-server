@@ -1,0 +1,16 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:ipreporter;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
+    username: sa
+    password: test
+app:
+  admin-username: admin
+  admin-password: test-admin-password-12345
+  report-token: test-report-token-123456789
+  encryption-key: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+  offline-seconds: 900
+  sync-seconds: 60
+  scheduling-enabled: false
+logging:
+  level:
+    root: WARN

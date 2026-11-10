@@ -1,0 +1,17 @@
+# 根构建上下文只允许前端与安装脚本；排除密钥、客户端仓库及构建产物。
+**
+!frontend/
+!frontend/**
+!distribution/
+!distribution/bootstrap/
+!distribution/bootstrap/install.sh
+!distribution/bootstrap/install.ps1
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+frontend/test-results/
+frontend/playwright-report/
+**/.env
+**/.env.*
+**/*.log
+**/.git/

@@ -1,0 +1,20 @@
+{
+  "name": "ip-reporter-console",
+  "version": "1.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "test": "vitest run"
+  },
+  "dependencies": { "vue": "3.5.45", "@lucide/vue": "1.70.0" },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "6.0.10",
+    "vite": "8.3.7",
+    "typescript": "5.9.3",
+    "vue-tsc": "3.3.14",
+    "vitest": "5.1.0"
+  }
+}

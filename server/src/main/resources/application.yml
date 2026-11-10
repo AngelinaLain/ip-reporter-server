@@ -1,0 +1,52 @@
+spring:
+  application:
+    name: ip-reporter-server
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/ipreporter}
+    username: ${DATABASE_USER:ipreporter}
+    password: ${DATABASE_PASSWORD}
+    hikari:
+      maximum-pool-size: 8
+      minimum-idle: 1
+      connection-timeout: 10000
+  flyway:
+    enabled: true
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: false
+server:
+  port: 8080
+  forward-headers-strategy: none
+  servlet:
+    session:
+      timeout: 8h
+      cookie:
+        name: IPREPORTER_SESSION
+        http-only: true
+        same-site: strict
+        secure: ${COOKIE_SECURE:false}
+  tomcat:
+    max-http-form-post-size: 256KB
+    threads:
+      max: 40
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+app:
+  admin-username: ${ADMIN_USERNAME:admin}
+  admin-password: ${ADMIN_PASSWORD}
+  report-token: ${REPORT_TOKEN}
+  encryption-key: ${APP_ENCRYPTION_KEY}
+  offline-seconds: ${OFFLINE_SECONDS:900}
+  sync-seconds: ${DDNS_SYNC_SECONDS:60}
+  scheduling-enabled: ${DDNS_SCHEDULING_ENABLED:true}
+  trust-proxy-headers: ${TRUST_PROXY_HEADERS:false}
+logging:
+  level:
+    root: INFO
+    com.ipreporter.server: INFO

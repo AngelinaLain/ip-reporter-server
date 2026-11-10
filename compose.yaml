@@ -1,0 +1,91 @@
+name: ip-reporter-platform
+services:
+  db:
+    image: docker.io/library/postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ipreporter
+      POSTGRES_USER: ipreporter
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Run scripts/init-server.ps1 or scripts/init-server.sh first}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ipreporter -d ipreporter"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+  backend:
+    image: ${IMAGE_PREFIX:-ghcr.io/angelinalain/ip-reporter-server}-backend:${IMAGE_TAG:-1.0.0}
+    restart: unless-stopped
+    depends_on:
+      db: { condition: service_healthy }
+    environment:
+      DATABASE_URL: jdbc:postgresql://db:5432/ipreporter
+      DATABASE_USER: ipreporter
+      DATABASE_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD is required}
+      REPORT_TOKEN: ${REPORT_TOKEN:?REPORT_TOKEN is required}
+      APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY:?APP_ENCRYPTION_KEY is required}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      TRUST_PROXY_HEADERS: "true"
+      OFFLINE_SECONDS: ${OFFLINE_SECONDS:-900}
+      DDNS_SYNC_SECONDS: ${DDNS_SYNC_SECONDS:-60}
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+    read_only: true
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=128m"]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 768m
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+  mirror:
+    image: ${IMAGE_PREFIX:-ghcr.io/angelinalain/ip-reporter-server}-mirror:${IMAGE_TAG:-1.0.0}
+    restart: unless-stopped
+    environment:
+      CLIENT_GITHUB_REPOSITORY: ${CLIENT_GITHUB_REPOSITORY:-}
+      CLIENT_GITHUB_TOKEN: ${CLIENT_GITHUB_TOKEN:-}
+      CLIENT_RELEASE_TAG: ${CLIENT_RELEASE_TAG:-}
+      CLIENT_SYNC_INTERVAL_SECONDS: ${CLIENT_SYNC_INTERVAL_SECONDS:-3600}
+      CLIENT_KEEP_RELEASES: ${CLIENT_KEEP_RELEASES:-2}
+    volumes:
+      - client_releases:/data
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 128m
+    logging:
+      driver: json-file
+      options: { max-size: "5m", max-file: "2" }
+  frontend:
+    image: ${IMAGE_PREFIX:-ghcr.io/angelinalain/ip-reporter-server}-frontend:${IMAGE_TAG:-1.0.0}
+    restart: unless-stopped
+    depends_on:
+      backend: { condition: service_healthy, restart: true }
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${APP_PORT:-18080}:8080"
+    volumes:
+      - client_releases:/srv/client-downloads:ro
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8080/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+volumes:
+  postgres_data:
+  client_releases:

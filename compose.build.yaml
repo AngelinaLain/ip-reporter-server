@@ -1,0 +1,16 @@
+# 从源码构建时显式加载；镜像使用本地名称，避免覆盖 GHCR 发布标签。
+services:
+  backend:
+    image: docker.io/library/ip-reporter-platform-backend:local
+    pull_policy: build
+    build: ./server
+  mirror:
+    image: docker.io/library/ip-reporter-platform-mirror:local
+    pull_policy: build
+    build: ./distribution
+  frontend:
+    image: docker.io/library/ip-reporter-platform-frontend:local
+    pull_policy: build
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile

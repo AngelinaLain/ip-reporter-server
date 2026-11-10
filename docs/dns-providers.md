@@ -24,6 +24,14 @@
 
 适配器使用官方 Java SDK、HTTPS `alidns.aliyuncs.com`，按页查询后再次校验主域名、主机记录、类型与线路。资源范围可参考[查询记录的授权信息](https://help.aliyun.com/zh/dns/api-alidns-2015-01-09-describedomainrecords)和[修改记录的授权信息](https://help.aliyun.com/zh/dns/api-alidns-2015-01-09-updatedomainrecord)，将 RAM 策略资源限制到需要的域名。
 
+### REQUEST_FAILED 与诊断
+
+服务端 1.0.0 / 1.0.1 使用空的 `HttpClientConfig` 构造 SDK，HTTP 实现类型未初始化，导致请求尚未发出就被转换成通用 `REQUEST_FAILED`。这条错误不能证明阿里云账号权限不足。1.0.2 改用 SDK 默认配置工厂，保留 HTTPS、证书校验和原超时，并增加真实客户端构造及关闭回归，测试不需要网络或云凭据。
+
+升级时保留 `.env` 中的密钥与现有规则，将 `IMAGE_TAG` 改为 `1.0.2` 后执行 `docker compose pull` 和 `docker compose up -d`。规则已启用时会在下一轮重试，也可在管理页手动同步；此修复不需要重新填写 AccessKey。
+
+新版错误包含失败动作（初始化、查询、创建或更新）、安全的 SDK 错误码及可用的 RequestId。初始化失败会显示 `SDK_INITIALIZATION_FAILED`；DNS 解析、连接、超时和 TLS 故障会分别提示检查对应的服务端网络环节。只有云端返回鉴权相关错误码时才提示核对对应授权。SDK 原始异常正文、签名 URL 和凭据不会写入同步日志。
+
 ## 腾讯云 DNSPod
 
 这是腾讯云 API 3.0 DNSPod 接口，使用 **SecretId / SecretKey**；传统 DNSPod 的 `ID,Token` 不适用于此适配器。

@@ -34,7 +34,7 @@ Compose 启动四个服务。`db` 保存数据，`backend` 接收报告并执行
 | --- | --- |
 | `APP_PORT` | 宿主机入口端口，默认 `18080` |
 | `BIND_ADDRESS` | 宿主机监听地址，默认 `127.0.0.1` |
-| `IMAGE_TAG` | 服务端镜像版本，默认 `1.0.1`，升级时显式修改 |
+| `IMAGE_TAG` | 服务端镜像版本，默认 `1.0.2`，升级时显式修改 |
 | `IMAGE_PREFIX` | 三个镜像共用的名称前缀，默认 `ghcr.io/angelinalain/ip-reporter-server` |
 | `ADMIN_USERNAME` / `ADMIN_PASSWORD` | 管理页面登录凭据 |
 | `REPORT_TOKEN` | C++ 客户端上报使用的 Bearer Token，与管理员密码分开 |
@@ -113,7 +113,7 @@ docker compose exec -T db pg_dump -U ipreporter ipreporter > ip-reporter-backup.
 
 服务端以客户端配置中的 `device_id` 识别机器。主机名、上报 IP 和单个 MAC 都不足以唯一识别设备；重新创建配置或并行使用开发配置与系统服务配置时，可能出现同名但 ID 不同的记录。正常心跳、重启和普通升级不会更换设备 ID。客户端 1.1.2 起，重新配置和 `--init --force` 默认继承既有有效配置的 ID；显式指定新 ID 或删除配置后重装仍会创建新身份。
 
-已有 1.0.0 部署先保留 `.env` 和数据库备份，将 `.env` 中的 `IMAGE_TAG` 改为 `1.0.1`，然后执行：
+已有 1.0.0 / 1.0.1 部署先保留 `.env` 和数据库备份，将 `.env` 中的 `IMAGE_TAG` 改为 `1.0.2`，然后执行：
 
 ```sh
 docker compose pull

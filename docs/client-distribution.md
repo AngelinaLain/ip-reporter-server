@@ -4,7 +4,7 @@
 
 当前公开仓库为 [AngelinaLain/ip-reporter-client](https://github.com/AngelinaLain/ip-reporter-client)。服务端初始化默认使用此仓库。
 
-[v1.1.3](https://github.com/AngelinaLain/ip-reporter-client/releases/tag/v1.1.3) 的发布矩阵包含 12 个平台，新增 `debian12-arm64`；Release 包括 12 个平台归档、6 个 DEB、1 个 RPM、安装索引和校验清单。
+[v1.1.3](https://github.com/AngelinaLain/ip-reporter-client/releases/tag/v1.1.3) 的发布矩阵包含 14 个平台，新增 `debian12-arm64`；Release 包括 14 个平台归档、6 个 DEB、1 个 RPM、安装索引和校验清单，共 23 个资产。
 
 ## 发布版本
 

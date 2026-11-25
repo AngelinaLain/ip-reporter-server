@@ -4,7 +4,7 @@
 
 服务端公开仓库为 [AngelinaLain/ip-reporter-server](https://github.com/AngelinaLain/ip-reporter-server)，客户端源码单独维护在 [AngelinaLain/ip-reporter-client](https://github.com/AngelinaLain/ip-reporter-client)。服务端通过 GitHub Actions 构建并向 GHCR 发布三个 Docker 镜像，支持 Linux amd64 和 arm64，部署设备无需安装 Java、Node.js 或编译工具。
 
-[客户端 v1.1.3](https://github.com/AngelinaLain/ip-reporter-client/releases/tag/v1.1.3) 增加 Debian 12 ARM64 原生构建，发布矩阵覆盖 12 个平台。服务端同步后可在「接入机器」中直接安装。
+[客户端 v1.1.3](https://github.com/AngelinaLain/ip-reporter-client/releases/tag/v1.1.3) 增加 Debian 12 ARM64 原生构建，发布矩阵覆盖 14 个平台。服务端同步后可在「接入机器」中直接安装。
 
 服务端 v1.1.3 增加数据库持久化的管理员改密与可选 OIDC SSO，同时保留本地管理员作为应急登录。三个 Docker 镜像继续发布 Linux amd64 / arm64 manifest。
 

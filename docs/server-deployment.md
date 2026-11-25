@@ -34,7 +34,7 @@ Compose 启动四个服务。`db` 保存数据，`backend` 接收报告并执行
 | --- | --- |
 | `APP_PORT` | 宿主机入口端口，默认 `18080` |
 | `BIND_ADDRESS` | 宿主机监听地址，默认 `127.0.0.1` |
-| `IMAGE_TAG` | 服务端镜像版本，默认 `1.1.3`，升级时显式修改 |
+| `IMAGE_TAG` | 服务端镜像版本，默认 `1.1.4`，升级时显式修改 |
 | `IMAGE_PREFIX` | 三个镜像共用的名称前缀，默认 `ghcr.io/angelinalain/ip-reporter-server` |
 | `ADMIN_USERNAME` / `ADMIN_PASSWORD` | 首次启动时写入数据库的本地管理员凭据；之后可在控制台改密 |
 | `SSO_ENABLED` | 是否启用 OpenID Connect 单点登录 |

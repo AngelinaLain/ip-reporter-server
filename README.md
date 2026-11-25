@@ -32,17 +32,19 @@ docker compose up -d
 
 打开 [本机管理控制台](http://127.0.0.1:18080)，使用 `.env` 中的管理员账号登录。进入「接入机器」，查看镜像版本和目标系统的安装命令。首次安装输入 `REPORT_TOKEN`，也可通过本地文件交给安装脚本。
 
-默认使用服务端 `1.1.3` 镜像。前端、安装脚本、后端和客户端 Release 同步服务均在镜像中，数据库及已同步安装包使用命名卷保存。`.env` 可通过 `IMAGE_TAG` 指定版本；使用其他镜像仓库时修改 `IMAGE_PREFIX`。发布页提供只包含 Compose 和初始化脚本的部署包，解压后执行相同命令即可启动。
+默认使用服务端 `1.1.4` 镜像。前端、安装脚本、后端和客户端 Release 同步服务均在镜像中，数据库及已同步安装包使用命名卷保存。`.env` 可通过 `IMAGE_TAG` 指定版本；使用其他镜像仓库时修改 `IMAGE_PREFIX`。发布页提供只包含 Compose 和初始化脚本的部署包，解压后执行相同命令即可启动。
 
 | 服务 | 镜像 |
 | --- | --- |
-| 后端 | `ghcr.io/angelinalain/ip-reporter-server-backend:1.1.3` |
-| 前端 | `ghcr.io/angelinalain/ip-reporter-server-frontend:1.1.3` |
-| 客户端包同步 | `ghcr.io/angelinalain/ip-reporter-server-mirror:1.1.3` |
+| 后端 | `ghcr.io/angelinalain/ip-reporter-server-backend:1.1.4` |
+| 前端 | `ghcr.io/angelinalain/ip-reporter-server-frontend:1.1.4` |
+| 客户端包同步 | `ghcr.io/angelinalain/ip-reporter-server-mirror:1.1.4` |
 
 同一设备重建配置可能产生多个设备 ID。1.0.1 在机器管理页提示网卡标识一致的候选记录，管理员核对后可合并；保留 DDNS 绑定，所有旧 ID 的后续上报归入保留记录。客户端 1.1.2 起重新配置默认保留原设备 ID。升级及处理现有重复项见[机器身份与合并](docs/server-deployment.md#机器身份与重复记录)。
 
 1.1.3 升级时保留 `.env` 与数据库备份，将 `IMAGE_TAG` 改为 `1.1.3` 后执行拉取和启动命令。管理员初始密码会迁移到数据库，此后可从控制台修改；启用 SSO 前请先按部署文档登记 OIDC 回调地址。
+
+1.1.4 修复 HTTP 管理入口的复制按钮无法使用：浏览器未提供 Clipboard API 时尝试兼容复制。已有部署将 `.env` 的 `IMAGE_TAG` 改为 `1.1.4`，再运行 `docker compose pull` 和 `docker compose up -d`。
 
 ## 构建和发布服务端
 

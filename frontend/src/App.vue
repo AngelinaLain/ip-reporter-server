@@ -372,10 +372,30 @@ function trapFocus(event: KeyboardEvent) {
 }
 async function copy(value: string) {
   try {
+    if (!navigator.clipboard?.writeText) throw new Error("Clipboard API unavailable");
     await navigator.clipboard.writeText(value);
     notify("已复制到剪贴板");
+    return;
+  } catch { /* HTTP 地址或浏览器权限限制时尝试兼容复制。 */ }
+
+  const input = document.createElement("textarea");
+  const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  input.value = value;
+  input.readOnly = true;
+  input.style.position = "fixed";
+  input.style.top = "0";
+  input.style.left = "-9999px";
+  document.body.appendChild(input);
+  try {
+    input.focus();
+    input.select();
+    if (!document.execCommand("copy")) throw new Error("Copy command failed");
+    notify("已复制到剪贴板");
   } catch {
-    notify("浏览器未开放剪贴板权限，请手动选中复制", "error");
+    notify("自动复制失败，请手动选中文本复制", "error");
+  } finally {
+    input.remove();
+    previousFocus?.focus();
   }
 }
 function editProvider(value?: Provider) {

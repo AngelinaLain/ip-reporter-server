@@ -4,9 +4,9 @@
 
 服务端公开仓库为 [AngelinaLain/ip-reporter-server](https://github.com/AngelinaLain/ip-reporter-server)，客户端源码单独维护在 [AngelinaLain/ip-reporter-client](https://github.com/AngelinaLain/ip-reporter-client)。服务端通过 GitHub Actions 构建并向 GHCR 发布三个 Docker 镜像，支持 Linux amd64 和 arm64，部署设备无需安装 Java、Node.js 或编译工具。
 
-[客户端 v1.1.2](https://github.com/AngelinaLain/ip-reporter-client/releases/tag/v1.1.2) 已发布，11 个平台的 [CI 构建与测试](https://github.com/AngelinaLain/ip-reporter-client/actions/runs/42830312573) 全部通过。此版本修复重新配置时意外更换设备 ID 的问题，服务端同步后可在「接入机器」中复制安装命令。
+[客户端 v1.1.3](https://github.com/AngelinaLain/ip-reporter-client/releases/tag/v1.1.3) 增加 Debian 12 ARM64 原生构建，发布矩阵覆盖 12 个平台。服务端同步后可在「接入机器」中直接安装。
 
-服务端 [v1.0.1](https://github.com/AngelinaLain/ip-reporter-server/releases/tag/v1.0.1) 已发布，[CI 测试、镜像构建与 Compose 验收](https://github.com/AngelinaLain/ip-reporter-server/actions/runs/42831310795) 全部通过。三个公开镜像均已验证可匿名读取，并包含 Linux amd64 / arm64 manifest。
+服务端 v1.1.3 增加数据库持久化的管理员改密与可选 OIDC SSO，同时保留本地管理员作为应急登录。三个 Docker 镜像继续发布 Linux amd64 / arm64 manifest。
 
 ## 启动服务端
 
@@ -32,17 +32,17 @@ docker compose up -d
 
 打开 [本机管理控制台](http://127.0.0.1:18080)，使用 `.env` 中的管理员账号登录。进入「接入机器」，查看镜像版本和目标系统的安装命令。首次安装输入 `REPORT_TOKEN`，也可通过本地文件交给安装脚本。
 
-默认使用服务端 `1.0.2` 镜像。前端、安装脚本、后端和客户端 Release 同步服务均在镜像中，数据库及已同步安装包使用命名卷保存。`.env` 可通过 `IMAGE_TAG` 指定版本；使用其他镜像仓库时修改 `IMAGE_PREFIX`。发布页提供只包含 Compose 和初始化脚本的部署包，解压后执行相同命令即可启动。
+默认使用服务端 `1.1.3` 镜像。前端、安装脚本、后端和客户端 Release 同步服务均在镜像中，数据库及已同步安装包使用命名卷保存。`.env` 可通过 `IMAGE_TAG` 指定版本；使用其他镜像仓库时修改 `IMAGE_PREFIX`。发布页提供只包含 Compose 和初始化脚本的部署包，解压后执行相同命令即可启动。
 
 | 服务 | 镜像 |
 | --- | --- |
-| 后端 | `ghcr.io/angelinalain/ip-reporter-server-backend:1.0.2` |
-| 前端 | `ghcr.io/angelinalain/ip-reporter-server-frontend:1.0.2` |
-| 客户端包同步 | `ghcr.io/angelinalain/ip-reporter-server-mirror:1.0.2` |
+| 后端 | `ghcr.io/angelinalain/ip-reporter-server-backend:1.1.3` |
+| 前端 | `ghcr.io/angelinalain/ip-reporter-server-frontend:1.1.3` |
+| 客户端包同步 | `ghcr.io/angelinalain/ip-reporter-server-mirror:1.1.3` |
 
 同一设备重建配置可能产生多个设备 ID。1.0.1 在机器管理页提示网卡标识一致的候选记录，管理员核对后可合并；保留 DDNS 绑定，所有旧 ID 的后续上报归入保留记录。客户端 1.1.2 起重新配置默认保留原设备 ID。升级及处理现有重复项见[机器身份与合并](docs/server-deployment.md#机器身份与重复记录)。
 
-1.0.2 修复阿里云 SDK HTTP 客户端初始化失败、请求发出前被统一显示为 `REQUEST_FAILED` 的问题，并为初始化、查询和写入失败提供脱敏诊断。已有部署保留 `.env`，将 `IMAGE_TAG` 改为 `1.0.2` 后执行拉取和启动命令即可升级。
+1.1.3 升级时保留 `.env` 与数据库备份，将 `IMAGE_TAG` 改为 `1.1.3` 后执行拉取和启动命令。管理员初始密码会迁移到数据库，此后可从控制台修改；启用 SSO 前请先按部署文档登记 OIDC 回调地址。
 
 ## 构建和发布服务端
 

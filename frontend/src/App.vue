@@ -70,8 +70,14 @@ const page = ref<Page>("overview");
 const sidebarOpen = ref(false);
 const authenticated = ref(false),
   initialized = ref(false),
-  username = ref("admin");
+  username = ref("admin"),
+  localPasswordChange = ref(false),
+  ssoEnabled = ref(false),
+  ssoProvider = ref("企业 SSO"),
+  ssoLoginUrl = ref<string | null>(null);
 const loginForm = reactive({ username: "admin", password: "" });
+const passwordForm = reactive({ currentPassword: "", newPassword: "", confirmation: "" });
+const passwordError = ref("");
 const loginError = ref(""),
   signingIn = ref(false),
   loading = ref(false),
@@ -93,7 +99,7 @@ const now = ref(Date.now()),
   query = ref(""),
   statusFilter = ref("all");
 const selectedMachine = ref<Machine | null>(null);
-const modal = ref<"provider" | "rule" | "onboarding" | "confirm" | "merge" | null>(null);
+const modal = ref<"provider" | "rule" | "onboarding" | "confirm" | "merge" | "password" | null>(null);
 const mergeMembers = ref<Machine[]>([]),
   mergeTargetId = ref(""),
   mergeError = ref("");
@@ -270,14 +276,45 @@ async function login() {
     await session();
     await api("/auth/login", { method: "POST", body: jsonBody(loginForm) });
     const current = await session();
-    authenticated.value = current.authenticated;
-    username.value = current.username || loginForm.username;
+    applySession(current);
     loginForm.password = "";
     await refresh();
   } catch (error) {
     loginError.value = error instanceof Error ? error.message : "登录失败";
   } finally {
     signingIn.value = false;
+  }
+}
+function applySession(current: import("./types").Session) {
+  authenticated.value = current.authenticated;
+  username.value = current.username || "admin";
+  localPasswordChange.value = current.localPasswordChange;
+  ssoEnabled.value = current.ssoEnabled;
+  ssoProvider.value = current.ssoProvider || "企业 SSO";
+  ssoLoginUrl.value = current.ssoLoginUrl;
+}
+async function changePassword() {
+  passwordError.value = "";
+  if (passwordForm.newPassword !== passwordForm.confirmation) {
+    passwordError.value = "两次输入的新密码不一致";
+    return;
+  }
+  submitting.value = true;
+  try {
+    await api("/auth/password", {
+      method: "POST",
+      body: jsonBody({ currentPassword: passwordForm.currentPassword, newPassword: passwordForm.newPassword }),
+    });
+    submitting.value = false;
+    closeModal();
+    authenticated.value = false;
+    loginForm.password = "";
+    await session();
+    loginError.value = "密码已修改，请使用新密码重新登录";
+  } catch (error) {
+    passwordError.value = error instanceof Error ? error.message : "密码修改失败";
+  } finally {
+    submitting.value = false;
   }
 }
 async function logout() {
@@ -307,6 +344,8 @@ function closeModal() {
   mergeMembers.value = [];
   mergeTargetId.value = "";
   mergeError.value = "";
+  passwordError.value = "";
+  Object.assign(passwordForm, { currentPassword: "", newPassword: "", confirmation: "" });
   nextTick(() => modalOrigin.value?.focus());
 }
 function trapFocus(event: KeyboardEvent) {
@@ -647,8 +686,7 @@ onMounted(async () => {
   window.addEventListener("hashchange", readHash);
   try {
     const current = await session();
-    authenticated.value = current.authenticated;
-    username.value = current.username || "admin";
+    applySession(current);
     if (current.authenticated) await refresh();
   } catch {
     loginError.value = "暂时无法连接服务端，请确认 Docker 服务已启动";
@@ -735,8 +773,12 @@ onUnmounted(() => {
           }}</span
           ><ArrowRight v-if="!signingIn" :size="17" />
         </button>
+        <div v-if="ssoEnabled && ssoLoginUrl" class="login-divider"><span>或</span></div>
+        <a v-if="ssoEnabled && ssoLoginUrl" class="button secondary sso-submit" :href="ssoLoginUrl">
+          <ShieldCheck :size="17" />使用 {{ ssoProvider }} 登录
+        </a>
         <div class="login-note">
-          <KeyRound :size="15" /> 密码在服务器 .env 文件的 ADMIN_PASSWORD 中配置
+          <KeyRound :size="15" /> 首次密码来自服务器 .env，登录后可在控制台修改
         </div>
       </form>
       <span class="login-copyright">IP Reporter / 私有网络管理工作台</span>
@@ -804,6 +846,14 @@ onUnmounted(() => {
         <div class="topbar-right">
           <span class="environment-pill"
             ><span class="status-dot"></span> 私有部署</span
+          ><button
+            v-if="localPasswordChange"
+            class="icon-button"
+            title="修改管理员密码"
+            aria-label="修改管理员密码"
+            @click="openModal('password')"
+          >
+            <KeyRound :size="19" /></button
           ><button
             class="icon-button"
             title="接入帮助"
@@ -1601,7 +1651,9 @@ onUnmounted(() => {
       <div class="modal-header">
         <div>
           <span class="eyebrow">{{
-            modal === "provider"
+            modal === "password"
+              ? "ACCOUNT SECURITY"
+              : modal === "provider"
               ? "DNS PROVIDER"
               : modal === "rule"
                 ? "DYNAMIC DNS"
@@ -1613,7 +1665,9 @@ onUnmounted(() => {
           }}</span>
           <h2 id="modal-title">
             {{
-              modal === "provider"
+              modal === "password"
+                ? "修改管理员密码"
+                : modal === "provider"
                 ? providerForm.id
                   ? "编辑 DNS 服务商"
                   : "添加 DNS 服务商"
@@ -1638,7 +1692,25 @@ onUnmounted(() => {
           <X :size="20" />
         </button>
       </div>
-      <form v-if="modal === 'provider'" @submit.prevent="saveProvider">
+      <form v-if="modal === 'password'" @submit.prevent="changePassword">
+        <div class="modal-body">
+          <label for="current-password">当前密码</label>
+          <input id="current-password" v-model="passwordForm.currentPassword" type="password" autocomplete="current-password" required maxlength="256" />
+          <label for="new-password">新密码</label>
+          <input id="new-password" v-model="passwordForm.newPassword" type="password" autocomplete="new-password" required minlength="12" maxlength="256" />
+          <label for="confirm-password">确认新密码</label>
+          <input id="confirm-password" v-model="passwordForm.confirmation" type="password" autocomplete="new-password" required minlength="12" maxlength="256" />
+          <p class="field-hint">至少 12 个字符。修改成功后需要使用新密码重新登录。</p>
+          <p v-if="passwordError" class="form-error" role="alert">{{ passwordError }}</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="button secondary" :disabled="submitting" @click="closeModal">取消</button>
+          <button class="button primary" :disabled="submitting">
+            <LoaderCircle v-if="submitting" :size="16" class="spin" />确认修改
+          </button>
+        </div>
+      </form>
+      <form v-else-if="modal === 'provider'" @submit.prevent="saveProvider">
         <div class="modal-body">
           <label for="provider-type">DNS 服务商</label
           ><select id="provider-type" v-model="providerForm.type">

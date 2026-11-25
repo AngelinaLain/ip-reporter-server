@@ -46,6 +46,17 @@ app:
   sync-seconds: ${DDNS_SYNC_SECONDS:60}
   scheduling-enabled: ${DDNS_SCHEDULING_ENABLED:true}
   trust-proxy-headers: ${TRUST_PROXY_HEADERS:false}
+  sso:
+    enabled: ${SSO_ENABLED:false}
+    registration-id: ${SSO_REGISTRATION_ID:sso}
+    provider-name: ${SSO_PROVIDER_NAME:企业 SSO}
+    issuer-uri: ${SSO_ISSUER_URI:}
+    client-id: ${SSO_CLIENT_ID:}
+    client-secret: ${SSO_CLIENT_SECRET:}
+    redirect-uri: ${SSO_REDIRECT_URI:}
+    scopes: ${SSO_SCOPES:openid,profile,email}
+    admin-claim: ${SSO_ADMIN_CLAIM:}
+    admin-values: ${SSO_ADMIN_VALUES:}
 logging:
   level:
     root: ${DEBUG_LEVE:INFO}

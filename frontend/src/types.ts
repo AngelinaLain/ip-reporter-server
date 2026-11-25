@@ -76,4 +76,8 @@ export interface Session {
   authenticated: boolean;
   username: string | null;
   csrfToken: string;
+  localPasswordChange: boolean;
+  ssoEnabled: boolean;
+  ssoProvider: string;
+  ssoLoginUrl: string | null;
 }

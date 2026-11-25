@@ -26,6 +26,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpSession;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -49,12 +50,15 @@ class BackendIntegrationTest {
     DdnsRuleService rules;
     @Autowired
     SecretCipher cipher;
+    @Autowired
+    PasswordEncoder passwordEncoder;
     @MockitoBean(answers = org.mockito.Answers.CALLS_REAL_METHODS)
     AliyunDnsProvider aliyun;
     static final String TOKEN = "test-report-token-123456789";
 
     @BeforeEach
     void clean() {
+        jdbc.update("UPDATE admin_credentials SET password_hash=? WHERE username='admin'", passwordEncoder.encode("test-admin-password-12345"));
         jdbc.update("DELETE FROM ddns_logs");
         jdbc.update("DELETE FROM ddns_rules");
         jdbc.update("DELETE FROM dns_providers");
@@ -102,6 +106,26 @@ class BackendIntegrationTest {
     @Test
     void wrongPasswordDoesNotAuthenticate() throws Exception {
         mvc.perform(post("/api/auth/login").with(csrf()).contentType(MediaType.APPLICATION_JSON).content("{\"username\":\"admin\",\"password\":\"wrong\"}")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void localAdminCanChangePersistentPassword() throws Exception {
+        var login = mvc.perform(post("/api/auth/login").with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"admin\",\"password\":\"test-admin-password-12345\"}"))
+                .andExpect(status().isOk()).andReturn();
+        MockHttpSession session = (MockHttpSession) login.getRequest().getSession(false);
+        mvc.perform(post("/api/auth/password").session(session).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"wrong\",\"newPassword\":\"new-admin-password-67890\"}"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("当前密码不正确"));
+        mvc.perform(post("/api/auth/password").session(session).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"test-admin-password-12345\",\"newPassword\":\"new-admin-password-67890\"}"))
+                .andExpect(status().isNoContent());
+        mvc.perform(post("/api/auth/login").with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"admin\",\"password\":\"test-admin-password-12345\"}"))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/auth/login").with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"admin\",\"password\":\"new-admin-password-67890\"}"))
+                .andExpect(status().isOk());
     }
 
     @Test

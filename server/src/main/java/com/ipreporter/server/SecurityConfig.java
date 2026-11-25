@@ -13,13 +13,16 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.core.userdetails.User;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.crypto.password.Pbkdf2PasswordEncoder;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
+import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
+import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
@@ -29,21 +32,26 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Configuration
 public class SecurityConfig {
     @Bean SecurityContextRepository contextRepository() { return new HttpSessionSecurityContextRepository(); }
-    @Bean AuthenticationManager authenticationManager(AppProperties properties) {
-        var encoder=Pbkdf2PasswordEncoder.defaultsForSpringSecurity_v5_8();
-        var users=new InMemoryUserDetailsManager(User.withUsername(properties.adminUsername()).password(encoder.encode(properties.adminPassword())).roles("ADMIN").build());
+    @Bean PasswordEncoder passwordEncoder() { return Pbkdf2PasswordEncoder.defaultsForSpringSecurity_v5_8(); }
+    @Bean AuthenticationManager authenticationManager(AdminCredentialService users, PasswordEncoder encoder) {
         var provider=new DaoAuthenticationProvider(users); provider.setPasswordEncoder(encoder);
         return new ProviderManager(provider);
     }
-    @Bean SecurityFilterChain securityFilterChain(HttpSecurity http, AppProperties properties, SecurityContextRepository repository) throws Exception {
+    @Bean SecurityFilterChain securityFilterChain(HttpSecurity http, AppProperties properties, SecurityContextRepository repository,
+            ObjectProvider<OAuth2UserService<OidcUserRequest, OidcUser>> oidcServices) throws Exception {
         http.securityContext(context->context.securityContextRepository(repository))
             .csrf(csrf->csrf.ignoringRequestMatchers("/api/report"))
-            .authorizeHttpRequests(auth->auth.requestMatchers("/api/auth/session","/api/auth/login","/api/report","/actuator/health","/error").permitAll().anyRequest().authenticated())
+            .authorizeHttpRequests(auth->auth.requestMatchers("/api/auth/session","/api/auth/login","/api/report","/oauth2/**","/login/oauth2/**","/actuator/health","/error").permitAll().anyRequest().authenticated())
             .exceptionHandling(errors->errors.authenticationEntryPoint((request,response,error)->jsonError(response,401,"请先登录"))
                 .accessDeniedHandler((request,response,error)->jsonError(response,403,"会话验证失败，请刷新页面后重试")))
             .addFilterBefore(new ReportAccessFilter(properties.reportToken()),UsernamePasswordAuthenticationFilter.class)
             .logout(logout->logout.disable())
             .formLogin(form->form.disable()).httpBasic(basic->basic.disable());
+        OAuth2UserService<OidcUserRequest, OidcUser> oidcService = oidcServices.getIfAvailable();
+        if (oidcService != null) {
+            http.oauth2Login(oauth -> oauth.userInfoEndpoint(info -> info.oidcUserService(oidcService))
+                    .defaultSuccessUrl("/", true).failureUrl("/?sso=failed"));
+        }
         return http.build();
     }
     static void jsonError(HttpServletResponse response,int status,String message) throws IOException {

@@ -4,13 +4,13 @@
 
 当前公开仓库为 [AngelinaLain/ip-reporter-client](https://github.com/AngelinaLain/ip-reporter-client)。服务端初始化默认使用此仓库。
 
-[v1.1.2](https://github.com/AngelinaLain/ip-reporter-client/releases/tag/v1.1.2) 已完成 11 个平台的 CI 构建与测试，提供 19 个 Release 文件，包括 11 个平台归档、5 个 DEB、1 个 RPM、安装索引和校验清单。
+[v1.1.3](https://github.com/AngelinaLain/ip-reporter-client/releases/tag/v1.1.3) 的发布矩阵包含 12 个平台，新增 `debian12-arm64`；Release 包括 12 个平台归档、6 个 DEB、1 个 RPM、安装索引和校验清单。
 
 ## 发布版本
 
 客户端的 GitHub Actions 会为提交和拉取请求构建并测试。推送与客户端仓库 `CMakeLists.txt` 版本一致的 `vX.Y.Z` 标签后，CI 构建所有发布目标，生成带 SHA-256 和文件大小的安装索引，再上传安装包和校验清单到 GitHub Releases。服务端读取正式 Release，测试构建仍可在 Actions 下载。
 
-当前 `v1.1.2` 标签已发布。发布下一个修订版时，先把客户端 `CMakeLists.txt` 中的项目版本改为 `1.1.3`，提交并推送分支，再在客户端仓库运行：
+发布时先确认客户端 `CMakeLists.txt` 中的项目版本为 `1.1.3`，提交并推送分支，再在客户端仓库运行：
 
 ```sh
 git tag v1.1.3
@@ -76,7 +76,7 @@ Linux 和 macOS 终端：
 | --- | --- | --- |
 | 无人值守首次安装 | `-TokenFile C:\secure\report-token.txt` | `--token-file /root/report-token.txt` |
 | 指定上报地址 | `-Endpoint URL` | `--endpoint URL` |
-| 使用镜像中指定版本 | `-Tag v1.1.2` | `--tag v1.1.2` |
+| 使用镜像中指定版本 | `-Tag v1.1.3` | `--tag v1.1.3` |
 | 只验证下载、校验与解包 | `-VerifyOnly` | `--verify-only` |
 | 受控 HTTP 测试 | `-AllowHttp` | `--allow-http` |
 | 重建配置 | `-Reconfigure` | `--reconfigure` |

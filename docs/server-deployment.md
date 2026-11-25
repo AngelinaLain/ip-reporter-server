@@ -34,9 +34,13 @@ Compose 启动四个服务。`db` 保存数据，`backend` 接收报告并执行
 | --- | --- |
 | `APP_PORT` | 宿主机入口端口，默认 `18080` |
 | `BIND_ADDRESS` | 宿主机监听地址，默认 `127.0.0.1` |
-| `IMAGE_TAG` | 服务端镜像版本，默认 `1.0.2`，升级时显式修改 |
+| `IMAGE_TAG` | 服务端镜像版本，默认 `1.1.3`，升级时显式修改 |
 | `IMAGE_PREFIX` | 三个镜像共用的名称前缀，默认 `ghcr.io/angelinalain/ip-reporter-server` |
-| `ADMIN_USERNAME` / `ADMIN_PASSWORD` | 管理页面登录凭据 |
+| `ADMIN_USERNAME` / `ADMIN_PASSWORD` | 首次启动时写入数据库的本地管理员凭据；之后可在控制台改密 |
+| `SSO_ENABLED` | 是否启用 OpenID Connect 单点登录 |
+| `SSO_ISSUER_URI` / `SSO_CLIENT_ID` / `SSO_CLIENT_SECRET` | OIDC 提供方与客户端凭据 |
+| `SSO_REDIRECT_URI` | OIDC 回调；HTTPS 反代部署填写公网绝对地址 |
+| `SSO_ADMIN_CLAIM` / `SSO_ADMIN_VALUES` | 可选的管理员 claim 名称与允许值（逗号分隔） |
 | `REPORT_TOKEN` | C++ 客户端上报使用的 Bearer Token，与管理员密码分开 |
 | `APP_ENCRYPTION_KEY` | Base64 编码的 32 字节 AES 密钥，用于加密数据库中的 DNS API 凭据 |
 | `DB_PASSWORD` | PostgreSQL 应用用户密码 |
@@ -87,6 +91,12 @@ Compose 的 Nginx 使用实际连接地址覆盖 `X-Real-IP`，后端在私有�
 
 ## 管理、升级与备份
 
+### 管理员密码与 SSO
+
+本地管理员首次启动时从 `.env` 的 `ADMIN_USERNAME` / `ADMIN_PASSWORD` 写入数据库。登录后点击顶部钥匙按钮可修改密码；新密码至少 12 个字符，修改后当前会话退出。后续仅修改 `.env` 不会覆盖数据库中的密码，避免容器重启把管理员密码意外改回初始值。
+
+设置 `SSO_ENABLED=true` 可启用标准 OpenID Connect 登录。至少填写 `SSO_ISSUER_URI`、`SSO_CLIENT_ID` 和 `SSO_CLIENT_SECRET`，将 `SSO_REDIRECT_URI` 设为 `https://你的域名/login/oauth2/code/sso`，并在身份提供方登记同一回调地址。生产环境应使用 HTTPS，并将 `COOKIE_SECURE=true`。如果只允许指定用户或组进入后台，同时设置 `SSO_ADMIN_CLAIM`（例如 `groups`）与 `SSO_ADMIN_VALUES`（例如 `ip-reporter-admins,network-admins`）。留空权限限制时，该 OIDC 租户中所有能完成登录的账户都可管理平台。本地管理员入口始终保留，便于 SSO 故障时恢复。
+
 ```sh
 docker compose ps
 docker compose logs --tail=100 backend
@@ -126,7 +136,7 @@ docker compose up -d
 
 不同网卡身份的机器不能合并；仅重名、共享 IP 或个别虚拟网卡 MAC 相同不会成为合并依据。旧版客户端未上报 MAC、网卡清单发生变化等情况，请先核实配置来源。设备列表显示简短 ID，详情及合并对话框显示完整 ID，便于区分同名设备。
 
-从「接入机器」重新执行客户端安装命令即可升级，默认保留本机上报配置和 ID。若固定了 `CLIENT_RELEASE_TAG`，请更新到 `v1.1.2` 或留空跟随最新正式版本。
+从「接入机器」重新执行客户端安装命令即可升级，默认保留本机上报配置和 ID。若固定了 `CLIENT_RELEASE_TAG`，请更新到 `v1.1.3` 或留空跟随最新正式版本。
 
 ## 验证范围
 

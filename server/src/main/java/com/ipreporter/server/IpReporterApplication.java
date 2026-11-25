@@ -7,7 +7,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
 @EnableScheduling
-@EnableConfigurationProperties(AppProperties.class)
+@EnableConfigurationProperties({AppProperties.class, SsoProperties.class})
 public class IpReporterApplication {
     public static void main(String[] args) { SpringApplication.run(IpReporterApplication.class, args); }
 }
